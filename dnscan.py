@@ -44,7 +44,7 @@ class scanner(threading.Thread):
         self.queue = queue
 
     def get_name(self, domain):
-            global wildcard, addresses
+            global wildcard, addresses, subs
             try:
                 if sys.stdout.isatty():     # Don't spam output if redirected
                     sys.stdout.write(domain + "                              \r")
@@ -73,6 +73,7 @@ class scanner(threading.Thread):
                         else:
                             print(address + " - " + domain, file=outfile)
                     addresses.add(ipaddr(unicode(address)))
+                    subs.add(domain)
                 if domain != target and args.recurse:    # Don't scan root domain twice
                     add_target(domain)  # Recursively scan subdomains
             except:
@@ -247,12 +248,13 @@ def get_args():
     parser.add_argument('-T', '--tld', action="store_true", default=False, help="Scan for TLDs", dest='tld', required=False)
     parser.add_argument('-o', '--output', help="Write output to a file", dest='output_filename', required=False)
     parser.add_argument('-i', '--output-ips',   help="Write discovered IP addresses to a file", dest='output_ips', required=False)
+    parser.add_argument('-s', '--output-subs',   help="Write discovered subdomains to a file", dest='output_subs', required=False)
     parser.add_argument('-D', '--domain-first', action="store_true", default=False, help='Output domain first, rather than IP address', dest='domain_first', required=False)
     parser.add_argument('-v', '--verbose', action="store_true", default=False, help='Verbose mode', dest='verbose', required=False)
     args = parser.parse_args()
 
 def setup():
-    global targets, wordlist, queue, resolver, recordtype, outfile, outfile_ips
+    global targets, wordlist, queue, resolver, recordtype, outfile, outfile_ips, outfile_subs
     if args.domain:
         targets = [args.domain]
     if args.tld and not args.wordlist:
@@ -278,6 +280,10 @@ def setup():
         outfile_ips = open(args.output_ips, "w")
     else:
         outfile_ips = None
+    if args.output_subs:
+        outfile_subs = open(args.output_subs, "w")
+    else:
+        outfile_subs = None
 
     # Number of threads should be between 1 and 32
     if args.threads < 1:
@@ -298,8 +304,9 @@ def setup():
 
 
 if __name__ == "__main__":
-    global wildcard, addresses, outfile_ips
+    global wildcard, addresses,subs, outfile_ips, outfile_subs
     addresses = set([])
+    subs = set([])
     out = output()
     get_args()
     setup()
@@ -374,7 +381,12 @@ if __name__ == "__main__":
         if outfile_ips:
             for address in sorted(addresses):
                 print(address, file=outfile_ips)
+        if outfile_subs:
+            for sub in sorted(subs):
+                print(sub, file=outfile_subs)
     if outfile:
         outfile.close()
     if outfile_ips:
         outfile_ips.close()
+    if outfile_subs:
+        outfile_subs.close()
